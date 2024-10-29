@@ -3,8 +3,8 @@ from futu import OpenQuoteContext, PeriodType, ModifyUserSecurityOp, \
 from models import StockInfo, PlateInfo
 from database import SessionLocal
 from typing import List
-from database import Base
-
+from database import Base, engine
+# Base.metadata.create_all(bind=engine)
 quote_ctx = OpenQuoteContext(host='127.0.0.1', port=11111)
 
 
@@ -48,15 +48,16 @@ def insert_new_stock_data(market):
     if ret == 0:
         df = df[['code', 'name', 'exchange_type', 'delisting', 'listing_date']]
         df.columns = ['stock_code', 'stock_name', 'exchange_type', 'delisting', 'listing_date']
+        df = df[df['delisting'] == False]
         data = transfer_data_list(df)
         add_all_data(data)
     else:
         raise Exception("Connection of Futu lost!")
 
 
-def insert_new_plate_data():
+def insert_new_plate_data(market: Market):
     all_data = []
-    ret, data = quote_ctx.get_plate_list(Market.SZ, Plate.CONCEPT)
+    ret, data = quote_ctx.get_plate_list(market, Plate.CONCEPT)
     if ret == 0:
         data = data[['code', 'plate_name']]
         data.columns = ['plate_code', 'plate_name']
@@ -66,14 +67,18 @@ def insert_new_plate_data():
             for i in range(len(temp)):
                 temp_dict[temp[i]] = value[i]
             all_data.append(PlateInfo(**temp_dict))
-        add_all_data(data)
+        add_all_data(all_data)
     else:
         raise Exception("Connection of Futu lost!")
 
 
-def main_process(exchange_type, market):
+def main_process():
     flush_old_data_2(PlateInfo)
-    flush_old_data_1(StockInfo, exchange_type)
-    insert_new_stock_data(market)
-    insert_new_plate_data()
+    flush_old_data_2(StockInfo)
+    insert_new_stock_data(Market.SH)
+    insert_new_stock_data(Market.SZ)
+    insert_new_plate_data(Market.SH)
     return
+
+if __name__ == '__main__':
+    main_process()

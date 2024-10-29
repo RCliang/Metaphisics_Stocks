@@ -19,22 +19,6 @@ class StockInfo(Base):
     def __repr__(self):
         return f"{self.stock_code}_{self.stock_name}"
 
-
-class UserInfo(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True, unique=True)
-    username = Column(String(100), unique=True, nullable=False, comment="用户名")
-    email = Column(String(100), nullable=False, comment="邮箱")
-    hashed_password = Column(String(100), nullable=False, comment="哈希密码")
-    disabled = Column(Boolean, nullable=False, comment="是否有效")
-    create_time = Column(String(20), nullable=False)
-    mapper = {"order_by": id}
-    comment = Column(String(200))
-
-    def __repr__(self):
-        return f"{self.id}_{self.username}"
-
-
 class PlateInfo(Base):
     __tablename__ = "plates"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True, unique=True)
