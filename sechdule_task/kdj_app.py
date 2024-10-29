@@ -4,7 +4,7 @@ ROOT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(ROOT_PATH)
 import pandas as pd
 import numpy as np
-from ..backend.utils import FeishuApp
+from backend.utils import FeishuApp
 from futu import *
 from matplotlib import pyplot as plt
 
@@ -74,20 +74,21 @@ def draw_kdj(res:pd.DataFrame, code:str):
     plt.plot(res['k'], marker='x', markersize=3, color='red')
     plt.plot(res['d'], marker='o', markersize=3, color='green')
     plt.plot(res['j'], marker='o', markersize=3, color='black')
-    plt.savefig(f'./static/{code}_kdj.png')
-    plt.show()
+    plt.legend(['k', 'd', 'j'])
+    plt.savefig(os.path.join(ROOT_PATH, f'sechdule_task/static/{code}_kdj.png'))
+    # plt.show()
     return
 def get_kdj_data(data:pd.DataFrame):
     k, d, j = calculate_kdj(data['high'], data['low'], data['close'])
-    res = pd.DataFrame({'k': k, 'j': j, 'd': d, 'price': data['close']})
+    res = pd.DataFrame({'k': k, 'j': j, 'd': d, 'close': data['close']})
     res = res.dropna()
     return res
 def j_strategy_short(res:pd.DataFrame):
     res['j_diff'] = res['j'].diff()
-    res['j_diff'] = res['j_diff'].apply(lambda x: 1 if x > 0 else 0)
+    res['j_diff'] = res['j_diff'].apply(lambda x: 1 if x < 0 else 0)
     res['close_diff'] = res['close'].diff()
-    res['close_diff'] = res['close_diff'].apply(lambda x: 1 if x > 0 else 0)
-    if res['j_diff'][-5:].sum() >= 3 and res['j'][-1] <20:
+    res['close_diff'] = res['close_diff'].apply(lambda x: 1 if x > 0 else -1)
+    if sum(res['j_diff'].to_list()[-5:]) >= 3 and res['j'].to_list()[-1] < 0:
         print("long point!")
         return True
     else:
@@ -105,7 +106,10 @@ def main():
     for code, data in data_list.items():
         res = get_kdj_data(data)
         draw_kdj(res, code)
-        response = feishu_app.upload_image(f'./static/{code}_kdj.png')
+        response = feishu_app.upload_image(os.path.join(ROOT_PATH, f'sechdule_task/static/{code}_kdj.png'))
+        if response['code'] != 0:
+            feishu_app.access_token = feishu_app.get_access_token()
+            response = feishu_app.upload_image(f'./static/{code}_kdj.png')
         pic_id = response['data']['image_key']
         title = "关注提醒！！"
         if j_strategy_short(res):
@@ -114,6 +118,6 @@ def main():
             content = f"{target_code[code]} 短期J线未到20以下，无需关注!"
         feishu_app.send_message_card(feishu_app.create_msg_card(receive_id=receive_id, title=title, content=content, pic_id=pic_id))
             
-            
+
 if __name__ == "__main__":
     main()
