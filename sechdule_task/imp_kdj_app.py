@@ -7,7 +7,7 @@ import numpy as np
 from backend.utils import FeishuApp
 from futu import *
 from matplotlib import pyplot as plt
-
+from dotenv import load_dotenv
 
 def calculate_kdj(high_prices, low_prices, close_prices, n=9, m1=3, m2=3):
     """
@@ -95,6 +95,7 @@ def j_strategy_short(res:pd.DataFrame):
         return False
 
 def main():
+    load_dotenv()
     target_code = {'SH.688385': '复旦微电',
                     'SH.688318': '财富趋势',
                     'SH.688041': '海光信息'}
@@ -108,8 +109,9 @@ def main():
         draw_kdj(res, code)
         response = feishu_app.upload_image(os.path.join(ROOT_PATH, f'sechdule_task/static/{code}_kdj.png'))
         if response['code'] != 0:
+            print(response)
             feishu_app.access_token = feishu_app.get_access_token()
-            response = feishu_app.upload_image(f'./static/{code}_kdj.png')
+            response = feishu_app.upload_image(os.path.join(ROOT_PATH, f'sechdule_task/static/{code}_kdj.png'))
         pic_id = response['data']['image_key']
         title = "关注提醒！！"
         if j_strategy_short(res):

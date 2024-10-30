@@ -4,7 +4,8 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 from crud import *
 from models import *
-import hashlib
+import os
+import sys
 import futu as ft
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.responses import JSONResponse
@@ -14,14 +15,27 @@ from datetime import datetime, timedelta
 from database import engine, Base, SessionLocal
 from futu_api import *
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from utils import read_yaml
+ROOT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(ROOT_PATH)
 
+config = {}
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # ... startup code ...
+    global config
+    config = read_yaml(os.path.join(ROOT_PATH, "backend/config.yaml"))  # 从yaml文件读取配置
+    print("配置加载完成：", config)
+    yield
 
 origins = ["*"]
 app = FastAPI(
     title="Futu project",
     description="Futu project 项目文档：",
     version="1.0.0",
-    docs_url="/docs"
+    docs_url="/docs",
+    lifespan=lifespan
 )
 app.add_middleware(
     CORSMiddleware,
@@ -50,11 +64,9 @@ def get_db():
 @app.get("/query_stock_plate")
 async def query_stock_plate(stock_name: str, db: Session = Depends(get_db)):
     stock_code = get_stock_code(db, stock_name)
-    print(stock_code)
     if stock_code:
         quote_ctx = OpenQuoteContext(host='127.0.0.1', port=11111)
         ret, data = quote_ctx.get_owner_plate([stock_code])
-        print(data)
         if ret == ft.RET_OK:
             plate_name = data['plate_name'].values.tolist()
             plate_names = ','.join(plate_name)
@@ -63,7 +75,27 @@ async def query_stock_plate(stock_name: str, db: Session = Depends(get_db)):
     else:
         return {"error": "stock not found", "code": 404}
 
-
-
+@app.get("/query_stock_basic_info")
+async def query_stock_basic_info(stock_name: str, db: Session = Depends(get_db)):
+    stock_code = get_stock_code(db, stock_name)
+    cols_dict = config['need_cols']
+    print(stock_code)
+    if stock_code:
+        quote_ctx = OpenQuoteContext(host='127.0.0.1', port=11111)
+        ret, data = quote_ctx.get_market_snapshot([stock_code])
+        print(data)
+        if ret == ft.RET_OK:
+            data = data.loc[:, list(cols_dict.keys())]
+            if data['plate_valid'].values[0] == False:
+                data = data.drop(['plate_valid', 'plate_raise_count', 'plate_fall_count'], axis=1)
+            res = ''
+            for col in data.columns:
+                res += cols_dict[col] + ':' + str(data[col].values[0]) + ','
+            return {"stock_code": stock_code, "basic_info": res}
+        else:
+            return {'error':data, "code": ret}
+    else:
+        return {"error": "stock not found", "code": 404}
+    
 if __name__ == "__main__":
     uvicorn.run('main:app', host='127.0.0.1', port=8000, reload=True, workers=1)

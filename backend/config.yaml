@@ -1,0 +1,18 @@
+need_cols:
+  name: 股票名称
+  last_price: 现价
+  total_market_val: 总市值
+  net_profit: 净利润
+  circular_market_val: 流通市值
+  pe_ratio: 市盈率
+  pb_ratio: 市净率
+  amplitude: 股价振幅
+  avg_price: 均价
+  volume_ratio: 量比
+  highest52weeks_price: 近52周最高价
+  lowest52weeks_price: 近52周最低价
+  highest_history_price: 历史最高价
+  lowest_history_price: 历史最低价
+  plate_valid: 是否为板块类型
+  plate_raise_count: 板块类型上涨支数
+  plate_fall_count: 板块类型下跌支数
